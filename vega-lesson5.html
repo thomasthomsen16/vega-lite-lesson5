@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite-api@5.6.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-tooltip"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@5"></script>
+    <title>Document</title>
+</head>
+<body>
+  <div id="view"></div>
+  <div id="view2"></div>
+  <div id="view3"></div>
+  <div id="view4"></div>
+  <div id="view5"></div>
+  <script>
+  // setup API options
+  const options = {
+      config: {
+          // Vega-Lite default configuration
+        },
+        init: (view) => {
+          // initialize tooltip handler
+          view.tooltip(new vegaTooltip.Handler().call);
+        },
+        view: {
+          // view constructor options
+          // remove the loader if you don't want to default to vega-datasets!
+          renderer: "canvas",
+        },
+      };
+
+      // register vega and vega-lite with the API
+      vl.register(vega, vegaLite, options);
+
+    // Now you can use the API
+
+    // Linking to Vega dataset
+
+    const dataSet = "https://raw.githubusercontent.com/vega/vega-datasets/refs/heads/main/data/weather.csv";
+    
+    
+    // The Vega-Lite specification with two layers
+
+    vl.layer(
+        [vl.markArea({opacity: 0.3})
+        .data(dataSet)
+        .encode(
+            vl.x().month("date").title(null).axis({format: '%b'}),
+            vl.y().average("temp_max").title('Avg. Temperatur C'),
+            vl.y2().average("temp_min"),
+            vl.color().fieldN('location')
+        )],
+        [vl.markLine()
+        .data(dataSet)
+        .transform(
+            vl.calculate('(parseFloat(datum.temp_max) + parseFloat(datum.temp_min))/2').as("temp_mid")
+        )
+        .encode(
+            vl.x().month("date"),
+            vl.y().average("temp_mid"),
+            vl.color().fieldN("location")
+        )]
+    )
+        .render()
+        .then(viewElement => {
+            document.getElementById("view").appendChild(viewElement )
+        });
+
+    // A new Vega-lite specification
+
+    vl.markLine({interpolate: 'monotone', stroke: 'grey'})
+        .data(dataSet)
+        .transform(
+    vl.filter('datum.location == "Seattle"')
+    )
+    .encode(
+        vl.x().month('date').title(null),
+        vl.y().average('precipitation').title('Precipitation')
+    )
+    .render()
+        .then(viewElement2 => {
+            document.getElementById("view2").appendChild(viewElement2)
+        });
+
+    // A new Vega-lite specification
+
+    // Facet the layered chart by location
+    vl.spec(
+        vl.layer(
+          // First layer: Area chart
+          vl.markArea({ opacity: 0.3 })
+            .encode(
+              vl.x().month("date").title(null).axis({ format: '%b' }),
+              vl.y().average("temp_max").title('Avg. Temperatur C'),
+              vl.y2().average("temp_min"),
+              vl.color().fieldN('location')
+            ),
+          // Second layer: Line chart
+          vl.markLine()
+            .transform(
+              vl.calculate('(parseFloat(datum.temp_max) + parseFloat(datum.temp_min))/2').as("temp_mid")
+            )
+            .encode(
+              vl.x().month("date"),
+              vl.y().average("temp_mid"),
+              vl.color().fieldN("location")
+            )
+        )
+    )
+    .facet(vl.fieldN('location'))  // Facet after the specification
+    .data(dataSet)
+    .render()
+    .then(viewElement => {
+        document.getElementById("view3").appendChild(viewElement);
+    });
+
+    // A new Vega-Lite specification using const to simplify code and concatenation
+
+    // Make a base visualization that can be expanded
+    const base = vl.markLine()
+        .data(dataSet)
+        .encode(
+            vl.x().month('date').title(null),
+            vl.color().fieldN('location')
+        )
+        .width(240)
+        .height(180);
+
+    // Expand the base visualization and create 3 visualizations
+    const temp = base.encode(vl.y().average('temp_max'));
+    const precip = base.encode(vl.y().average('precipitation'));
+    const wind = base.encode(vl.y().average('wind'));
+
+    // Create a concated data viz using the temp, precip and wind
+    vl.concat(temp, precip,wind)
+    .render()
+    .then(viewElement=>{
+        document.getElementById("view4").appendChild(viewElement)
+    });
+
+    // A new Vega-lite specification using repeat
+
+    vl.markLine()
+        .data(dataSet)
+        .encode(
+            vl.x().month('date').title(null),
+            vl.y().average(vl.repeat('column')),
+            vl.color().fieldN('location')
+        )
+        .width(240)
+        .height(180)
+        .repeat({column: ['temp_max', 'precipitation', 'wind']})
+        .render()
+        .then(viewElement=>{
+            document.getElementById("view5").appendChild(viewElement)
+        });
+
+    </script>
+</body>
+</html>
